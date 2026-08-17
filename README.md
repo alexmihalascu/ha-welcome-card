@@ -17,11 +17,12 @@ entities:
     icon: mdi:account
 ```
 
-No canvas, no particle animation, no rotating sun arc — just a static
-time-of-day gradient background, a large digital clock, and the weather.
-`name` is optional; without it the greeting uses `hass.user.name`, so each
-logged-in person sees their own name. `entities` renders as tappable chips
-below the weather row (opens the entity's more-info dialog).
+No canvas, no particle animation — just a static time-of-day gradient
+background, a large digital clock, the weather, and a simple sun arc showing
+today's sunrise/sunset and the sun's current position (from `sun`, default
+`sun.sun`). `name` is optional; without it the greeting uses `hass.user.name`,
+so each logged-in person sees their own name. `entities` renders as tappable
+chips below the weather row (opens the entity's more-info dialog).
 
 ## License
 
