@@ -1,4 +1,4 @@
-const VERSION = "1.0.0";
+const VERSION = "1.1.0";
 
 const CONDITII = {
   "clear-night": "Senin", cloudy: "Înnorat", fog: "Ceață", hail: "Grindină",
@@ -33,7 +33,7 @@ class WelcomeCard extends HTMLElement {
   }
 
   setConfig(config) {
-    this._config = { name: null, weather: null, entities: [], ...config };
+    this._config = { name: null, weather: null, sun: "sun.sun", entities: [], ...config };
     this._built = false;
   }
 
@@ -76,6 +76,14 @@ class WelcomeCard extends HTMLElement {
       .chip{display:flex;align-items:center;gap:5px;padding:4px 10px 4px 7px;border-radius:999px;background:color-mix(in srgb,var(--secondary-text-color) 10%,transparent);font-size:.74rem;border:0;color:inherit;cursor:pointer;font-variant-numeric:tabular-nums}
       .chip:hover{background:color-mix(in srgb,var(--secondary-text-color) 18%,transparent)}
       .chip ha-icon{--mdc-icon-size:15px;opacity:.85}
+      .sunarc{margin-top:16px}
+      .sunarc svg{display:block;width:100%;height:52px;overflow:visible}
+      .sunarc .arcpath{fill:none;stroke:currentColor;stroke-opacity:.28;stroke-width:1.5;stroke-dasharray:3 4}
+      .sunarc .sundot{transition:cx .3s linear,cy .3s linear}
+      .sunarc .horizon{stroke:currentColor;stroke-opacity:.22;stroke-width:1}
+      .suntimes{display:flex;justify-content:space-between;font-size:.7rem;opacity:.68;margin-top:2px;font-variant-numeric:tabular-nums}
+      .suntimes span{display:flex;align-items:center;gap:3px}
+      .suntimes ha-icon{--mdc-icon-size:13px}
       .hide{display:none!important}
     </style>
     <ha-card>
@@ -91,12 +99,24 @@ class WelcomeCard extends HTMLElement {
           <div class="cond"></div>
         </div>
       </div>
+      <div class="sunarc">
+        <svg viewBox="0 0 300 56" preserveAspectRatio="none">
+          <line class="horizon" x1="4" y1="50" x2="296" y2="50"/>
+          <path class="arcpath" d="M10,50 Q150,-6 290,50"/>
+          <circle class="sundot" r="5" fill="#f4b942"/>
+        </svg>
+        <div class="suntimes">
+          <span><ha-icon icon="mdi:weather-sunset-up"></ha-icon><b class="rise"></b></span>
+          <span><ha-icon icon="mdi:weather-sunset-down"></ha-icon><b class="set"></b></span>
+        </div>
+      </div>
       <div class="chips"></div>
     </ha-card>`;
     const $ = (s) => this.shadowRoot.querySelector(s);
     this._el = {
       card: $("ha-card"), salut: $(".salut"), clock: $(".clock"), data: $(".data"),
       icon: $(".vreme ha-icon"), temp: $(".temp"), cond: $(".cond"), chips: $(".chips"),
+      sunarc: $(".sunarc"), sundot: $(".sundot"), rise: $(".rise"), set: $(".set"),
     };
     this._built = true;
   }
@@ -129,6 +149,8 @@ class WelcomeCard extends HTMLElement {
       this._el.cond.textContent = "";
     }
 
+    this._paintSun();
+
     const wrap = this._el.chips;
     wrap.innerHTML = "";
     for (const raw of this._config.entities || []) {
@@ -146,6 +168,29 @@ class WelcomeCard extends HTMLElement {
       wrap.appendChild(b);
     }
     wrap.classList.toggle("hide", !wrap.children.length);
+  }
+
+  // Poziția soarelui pe arc, din elevation/azimuth (sun.sun) - fără calcule de dată, doar starea curentă.
+  _paintSun() {
+    const s = this._config.sun ? this._hass.states[this._config.sun] : null;
+    if (!s) { this._el.sunarc.classList.add("hide"); return; }
+    this._el.sunarc.classList.remove("hide");
+
+    const { elevation, azimuth, next_rising, next_setting } = s.attributes;
+    const up = s.state === "above_horizon";
+
+    if (typeof azimuth === "number" && typeof elevation === "number") {
+      const x = Math.max(6, Math.min(294, ((azimuth - 45) / (315 - 45)) * 280 + 10));
+      const y = Math.max(-10, Math.min(60, 50 - elevation * 0.86));
+      this._el.sundot.setAttribute("cx", x);
+      this._el.sundot.setAttribute("cy", y);
+    }
+    this._el.sundot.setAttribute("fill", up ? "#f4b942" : "#8a93b8");
+    this._el.sundot.style.opacity = up ? "1" : ".6";
+
+    const fmt = (iso) => (iso ? new Date(iso).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" }) : "—");
+    this._el.rise.textContent = fmt(next_rising);
+    this._el.set.textContent = fmt(next_setting);
   }
 }
 
